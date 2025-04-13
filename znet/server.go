@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"gorik/ziface"
 	"net"
@@ -47,26 +48,12 @@ func (s *Server) Start() {
 			continue
 
 		}
-		go func() {
-			// Continuously loop to get data from the client.
-			for {
-				buf := make([]byte, 512)
-				cnt, err := conn.Read(buf)
-				if err != nil {
-					fmt.Println("recv buf err ", err)
-					continue
 
-				}
-				// Echo back the received data.
-				if _, err := conn.Write(buf[:cnt]); err != nil {
-					fmt.Println("write back buf err ", err)
-					continue
-
-				}
-
-			}
-
-		}()
+		var id uint32
+		id = 0
+		dealConn := NewConntion(conn, id, CallbackToClient)
+		id++
+		dealConn.Start()
 
 	}
 }
@@ -85,4 +72,16 @@ func NewServer(name string) ziface.Iserver {
 		IP:        "0.0.0.0",
 		Port:      7777,
 	}
+}
+
+func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+
+	println("[CONN handle] callback to client  ... .")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+
+		println("write back to client err   ::::  ", err)
+		return errors.New("Calback to lcient err ")
+
+	}
+	return nil
 }
