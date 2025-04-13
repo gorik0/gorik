@@ -3,6 +3,7 @@ package znet
 import (
 	"errors"
 	"fmt"
+	"gorik/utils"
 	"gorik/ziface"
 	"net"
 )
@@ -31,6 +32,11 @@ func (s *Server) Serve() {
 // Start implements ziface.Iserver.
 func (s *Server) Start() {
 
+	fmt.Printf("[START] Server name: %s, listener at IP: %s, Port %d is starting\n", s.Name, s.IP, s.Port)
+	fmt.Printf("[Zinx] Version: %s, MaxConn: %d, MaxPacketSize: %d\n",
+		utils.GlobalObject.Version,
+		utils.GlobalObject.MaxConn,
+		utils.GlobalObject.MaxPacketSize)
 	fmt.Printf("[sTart]sevrer listen on port %d in addr %s .... \n", s.Port, s.IP)
 
 	addr, err := net.ResolveTCPAddr(s.IPversion, fmt.Sprintf("%s:%d", s.IP, s.Port))
@@ -72,15 +78,18 @@ func (s *Server) Stop() {
 	// todo
 
 }
+func NewServer() ziface.Iserver {
+	// Initialize the global configuration file first
+	utils.GlobalObject.Reload()
 
-func NewServer(name string) ziface.Iserver {
-	return &Server{
-		Name:      name,
+	s := &Server{
+		Name:      utils.GlobalObject.Name, // Get from global parameters
 		IPversion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      7777,
+		IP:        utils.GlobalObject.Host,    // Get from global parameters
+		Port:      utils.GlobalObject.TcpPort, // Get from global parameters
 		Router:    nil,
 	}
+	return s
 }
 
 func CallbackToClient(conn *net.TCPConn, data []byte, cnt int) error {

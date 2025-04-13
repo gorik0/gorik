@@ -11,7 +11,7 @@ import (
 func main() {
 	go ClientTest()
 
-	s := znet.NewServer("Goriko server ;;; ")
+	s := znet.NewServer()
 	r := testik.PingRouter{}
 	s.AddRouter(&r)
 	s.Serve()
