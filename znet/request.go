@@ -8,7 +8,7 @@ type Request struct {
 }
 
 // GetConenction implements IRequest.
-func (r *Request) GetConenction() IConnection {
+func (r *Request) GetConenction() ziface.IConnection {
 	return r.conn
 }
 

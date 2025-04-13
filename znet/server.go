@@ -12,6 +12,14 @@ type Server struct {
 	IPversion string
 	IP        string
 	Port      int
+	Router    ziface.IRouter
+}
+
+// AddRouter implements ziface.Iserver.
+func (s *Server) AddRouter(router ziface.IRouter) {
+	s.Router = router
+
+	fmt.Println("Add Router success!")
 }
 
 // Serve implements ziface.Iserver.
@@ -51,9 +59,9 @@ func (s *Server) Start() {
 
 		var id uint32
 		id = 0
-		dealConn := NewConntion(conn, id, CallbackToClient)
+		dealConn := NewConntion(conn, id, CallbackToClient, s.Router)
 		id++
-		dealConn.Start()
+		go dealConn.Start()
 
 	}
 }
@@ -71,6 +79,7 @@ func NewServer(name string) ziface.Iserver {
 		IPversion: "tcp4",
 		IP:        "0.0.0.0",
 		Port:      7777,
+		Router:    nil,
 	}
 }
 
