@@ -1,8 +1,10 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"gorik/ziface"
+	"io"
 	"net"
 )
 
@@ -20,6 +22,29 @@ type Connection struct {
 	ExitBuffChan chan bool
 }
 
+func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+	if c.isClosed == true {
+		return errors.New("Connection closed when send msg")
+	}
+
+	// Package the data and send it
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(msgId, data))
+	if err != nil {
+		fmt.Println("Pack error msg id =", msgId)
+		return errors.New("Pack error msg")
+	}
+
+	// Write back to the client
+	if _, err := c.Conn.Write(msg); err != nil {
+		fmt.Println("Write msg id", msgId, "error")
+		c.ExitBuffChan <- true
+		return errors.New("conn Write error")
+	}
+
+	return nil
+}
+
 // GetConnID implements ziface.IConnection.
 func (c Connection) GetConnID() uint32 {
 	return c.ConnID
@@ -32,7 +57,7 @@ func (c Connection) GetTCPConnection() *net.TCPConn {
 
 // RemoteAddr implements ziface.IConnection.
 func (c Connection) RemoteAddr() net.Addr {
-	return c.RemoteAddr()
+	return c.Conn.RemoteAddr()
 }
 
 // Start implements ziface.IConnection.
@@ -71,33 +96,56 @@ func NewConntion(conn *net.TCPConn, connID uint32, callback_api ziface.HandFunc,
 
 	return c
 }
-
 func (c *Connection) StartReader() {
 	fmt.Println("Reader Goroutine is running")
-
-	defer fmt.Printf(c.Conn.RemoteAddr().String(), " conn reader exit!! \n")
-
+	println("pr datad ")
+	defer fmt.Println(c.RemoteAddr().String(), " conn reader exit!")
 	defer c.Stop()
 
 	for {
-
-		buffer := make([]byte, 512)
-
-		_, err := c.Conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error while reading data from connect connection ::: ", err)
+		// Create a data packing/unpacking object
+		dp := NewDataPack()
+		// Read the client's message header
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
+			fmt.Println("read msg head error", err)
 			c.ExitBuffChan <- true
 			continue
 		}
+		println("read header ...")
+		// Unpack the message, obtain msgid and datalen, and store them in msg
+		msg, err := dp.Unpack(headData)
+		if err != nil {
+			fmt.Println("unpack error", err)
+			c.ExitBuffChan <- true
+			continue
+		}
+		println("unpack to msg,,,")
+		// Read the data based on dataLen and store it in msg.Data
+		var data []byte
+		if msg.GetDataLen() > 0 {
+			data = make([]byte, msg.GetDataLen())
+			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
+				fmt.Println("read msg data error", err)
+				c.ExitBuffChan <- true
+				continue
+			}
+		}
+		println("reading data ...")
+		msg.SetData(data)
 
-		request := Request{conn: c, data: buffer}
+		// Get the Request data of the current client request
+		req := Request{
+			conn: c,
+			msg:  msg, // Replace buf with msg
+		}
 
-		go func(r ziface.IRequest) {
-			c.Router.PreHandle(r)
-			c.Router.Handle(r)
-			c.Router.PostHandle(r)
-		}(&request)
+		// Find the corresponding Handle registered in Routers based on the bound Conn
+		go func(request ziface.IRequest) {
+			// Execute the registered router methods
+			c.Router.PreHandle(request)
+			c.Router.Handle(request)
+			c.Router.PostHandle(request)
+		}(&req)
 	}
 }
-
-var _ ziface.IConnection = Connection{}
