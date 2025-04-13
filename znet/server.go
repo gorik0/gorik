@@ -29,6 +29,7 @@ func (s *Server) Start() {
 		fmt.Println("errror while listentingn ::: ", err.Error())
 	}
 
+	fmt.Println("RESOLVER :::: ", addr)
 	listener, err := net.ListenTCP(s.IPversion, addr)
 	if err != nil {
 		fmt.Println("listen", s.IPversion, "err", err)

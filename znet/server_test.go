@@ -31,7 +31,7 @@ func ClientTest() {
 
 }
 
-func TestSetrver(t *testing.T) {
+func TestServer(t *testing.T) {
 	s := NewServer("goriko")
 
 	go ClientTest()
