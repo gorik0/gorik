@@ -14,6 +14,10 @@ type PingRouter struct {
 // Ping Handle
 func (this *PingRouter) Handle(request ziface.IRequest) {
 	fmt.Println("Call PingRouter Handle")
+	println("ping")
+	println("ping")
+	println("ping")
+	println("ping")
 	// Read client data first, then write back ping...ping...ping
 	fmt.Println("recv from client : msgId=", request.GetMsgID(), ", data=", string(request.GetData()))
 

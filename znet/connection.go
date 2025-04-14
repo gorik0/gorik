@@ -3,6 +3,7 @@ package znet
 import (
 	"errors"
 	"fmt"
+	"gorik/utils"
 	"gorik/ziface"
 	"io"
 	"net"
@@ -35,9 +36,11 @@ func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 		return errors.New("Pack error message")
 	}
 
+	println("to chan")
 	// Write back to the client
 	// Change the previous direct write using conn.Write to sending the message to the Channel for the Writer to read
 	c.msgChan <- msg
+	println("afte sendong ")
 
 	return nil
 }
@@ -143,8 +146,13 @@ func (c *Connection) StartReader() {
 			msg:  msg, // Replace buf with msg
 		}
 
-		// Find the corresponding Handle registered in Routers based on the bound Conn
-		go c.MsgHandler.DoMsgHandler(&req)
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			// Worker pool mechanism has been started, send the message to the Worker for processing
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		} else {
+			// Execute the corresponding Handle method from the bound message and its corresponding processing method
+			go c.MsgHandler.DoMsgHandler(&req)
+		}
 	}
 }
 
@@ -155,14 +163,15 @@ func (c *Connection) StartWriter() {
 	for {
 		select {
 		case data := <-c.msgChan:
+			println("gota from chan")
 			// Data to be written to the client
 			if _, err := c.Conn.Write(data); err != nil {
 				fmt.Println("Send Data error:", err, "Conn Writer exit")
 				return
 			}
 		case <-c.ExitBuffChan:
+			return
 		}
 		// Connection has been closed
-		return
 	}
 }

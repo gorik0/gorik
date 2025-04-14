@@ -38,6 +38,7 @@ func (s *Server) Start() {
 		utils.GlobalObject.MaxPacketSize)
 	fmt.Printf("[sTart]sevrer listen on port %d in addr %s .... \n", s.Port, s.IP)
 
+	s.msgHandler.StartWorkerPool()
 	addr, err := net.ResolveTCPAddr(s.IPversion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 	if err != nil {
 		fmt.Println("errror while listentingn ::: ", err.Error())

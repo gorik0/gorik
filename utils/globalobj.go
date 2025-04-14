@@ -11,13 +11,24 @@ Stores all global parameters related to the Zinx framework for use by other modu
 Some parameters can also be configured by users in zinx.json.
 */
 type GlobalObj struct {
-	TcpServer     ziface.Iserver // Current global Server object of Zinx
-	Host          string         // Current server host IP
-	TcpPort       int            // Current server host listening port
-	Name          string         // Current server name
-	Version       string         // Current Zinx version
-	MaxPacketSize uint32         // Maximum size of data packet to be read
-	MaxConn       int            // Maximum number of allowed connections on the current server host
+	TcpServer ziface.Iserver // Current global Server object of Zinx
+	Host      string         // IP of the current server host
+	TcpPort   int            // Listening port number of the current server host
+	Name      string         // Name of the current server
+
+	/*
+	   Zinx
+	*/
+	Version          string // Current Zinx version number
+	MaxPacketSize    uint32 // Maximum size of data packet
+	MaxConn          int    // Maximum number of connections allowed on the current server host
+	WorkerPoolSize   uint32 // Number of workers in the business worker pool
+	MaxWorkerTaskLen uint32 // Maximum number of tasks stored in the task queue corresponding to each business worker
+
+	/*
+	   config file path
+	*/
+	ConfFilePath string
 }
 
 /*
@@ -44,14 +55,17 @@ Provide the init() method, which is automatically loaded.
 func init() {
 	// Initialize the GlobalObject variable and set some default values
 	GlobalObject = &GlobalObj{
-		Name:          "ZinxServerApp",
-		Version:       "V0.4",
-		TcpPort:       7777,
-		Host:          "0.0.0.0",
-		MaxConn:       12000,
-		MaxPacketSize: 4096,
+		Name:             "ZinxServerApp",
+		Version:          "V0.4",
+		TcpPort:          7777,
+		Host:             "0.0.0.0",
+		MaxConn:          12000,
+		MaxPacketSize:    4096,
+		ConfFilePath:     "conf/zinx.json",
+		WorkerPoolSize:   10,
+		MaxWorkerTaskLen: 1024,
 	}
 
-	// Load some user-configurable parameters from the configuration file
+	// Load some user-configured parameters from the configuration file
 	GlobalObject.Reload()
 }

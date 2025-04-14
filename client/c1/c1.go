@@ -27,6 +27,7 @@ func main() {
 		// Pack the message
 		dp := znet.NewDataPack()
 		msg, _ := dp.Pack(znet.NewMsgPackage(0, []byte("Zinx V0.6 Client0 Test Message")))
+		println("writing msg .. ")
 		_, err := conn.Write(msg)
 		if err != nil {
 			fmt.Println("write error err ", err)
@@ -36,6 +37,7 @@ func main() {
 		// Read the head part from the stream
 		headData := make([]byte, dp.GetHeadLen())
 		_, err = io.ReadFull(conn, headData) // ReadFull fills the buffer until it's full
+		println("ASGTER ")
 		if err != nil {
 			fmt.Println("read head error")
 			break
