@@ -136,7 +136,7 @@ func (c *Connection) StartReader() {
 		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
 			fmt.Println("read msg head error", err)
 			c.ExitBuffChan <- true
-			continue
+			break
 		}
 		println("read header ...")
 		// Unpack the message, obtain msgid and datalen, and store them in msg
@@ -144,7 +144,7 @@ func (c *Connection) StartReader() {
 		if err != nil {
 			fmt.Println("unpack error", err)
 			c.ExitBuffChan <- true
-			continue
+			break
 		}
 		println("unpack to msg,,,")
 		// Read the data based on dataLen and store it in msg.Data
@@ -154,7 +154,7 @@ func (c *Connection) StartReader() {
 			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
 				fmt.Println("read msg data error", err)
 				c.ExitBuffChan <- true
-				continue
+				break
 			}
 		}
 		println("reading data ...")
