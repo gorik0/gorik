@@ -11,7 +11,7 @@ Stores all global parameters related to the Zinx framework for use by other modu
 Some parameters can also be configured by users in zinx.json.
 */
 type GlobalObj struct {
-	TcpServer ziface.Iserver // Current global Server object of Zinx
+	TcpServer ziface.IServer // Current global Server object of Zinx
 	Host      string         // IP of the current server host
 	TcpPort   int            // Listening port number of the current server host
 	Name      string         // Name of the current server
@@ -24,7 +24,7 @@ type GlobalObj struct {
 	MaxConn          int    // Maximum number of connections allowed on the current server host
 	WorkerPoolSize   uint32 // Number of workers in the business worker pool
 	MaxWorkerTaskLen uint32 // Maximum number of tasks stored in the task queue corresponding to each business worker
-
+	MaxMsgChanLen    int
 	/*
 	   config file path
 	*/
@@ -64,6 +64,7 @@ func init() {
 		ConfFilePath:     "conf/zinx.json",
 		WorkerPoolSize:   10,
 		MaxWorkerTaskLen: 1024,
+		MaxMsgChanLen:    10,
 	}
 
 	// Load some user-configured parameters from the configuration file

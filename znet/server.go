@@ -93,7 +93,7 @@ func (s *Server) Stop() {
 	s.ConnMgr.ClearConn()
 
 }
-func NewServer() ziface.Iserver {
+func NewServer() ziface.IServer {
 	// Initialize the global configuration file first
 	utils.GlobalObject.Reload()
 

@@ -10,7 +10,7 @@ import (
 )
 
 type Connection struct {
-	TcpServer ziface.Iserver
+	TcpServer ziface.IServer
 	Conn      *net.TCPConn
 	// Current connection's ID, also known as SessionID, ID is   globally unique
 	ConnID uint32
@@ -65,45 +65,43 @@ func (c Connection) RemoteAddr() net.Addr {
 // Start implements ziface.IConnection.
 
 func (c *Connection) Start() {
-	func (c *Connection) Start() {
-		// 1. Start the Goroutine for reading data from the client
-		go c.StartReader()
-		// 2. Start the Goroutine for writing data back to the client
-		go c.StartWriter()
-	
-		// Call the registered hook method for connection creation according to the user's requirements
-		c.TcpServer.CallOnConnStart(c)
-	}
+	// 1. Start the Goroutine for reading data from the client
+	go c.StartReader()
+	// 2. Start the Goroutine for writing data back to the client
+	go c.StartWriter()
+
+	// Call the registered hook method for connection creation according to the user's requirements
+	c.TcpServer.CallOnConnStart(c)
 }
 
 // Stop implements ziface.IConnection.
 func (c *Connection) Stop() {
-    fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
-    // If the current connection is already closed
-    if c.isClosed == true {
-        return
-    }
-    c.isClosed = true
+	fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
+	// If the current connection is already closed
+	if c.isClosed == true {
+		return
+	}
+	c.isClosed = true
 
-    // ==================
-    // If the user registered a callback function for this connection's closure, it should be called explicitly at this moment
-    c.TcpServer.CallOnConnStop(c)
-    // ==================
+	// ==================
+	// If the user registered a callback function for this connection's closure, it should be called explicitly at this moment
+	c.TcpServer.CallOnConnStop(c)
+	// ==================
 
-    // Close the socket connection
-    c.Conn.Close()
-    // Close the writer
-    c.ExitBuffChan <- true
+	// Close the socket connection
+	c.Conn.Close()
+	// Close the writer
+	c.ExitBuffChan <- true
 
-    // Remove the connection from the connection manager
-    c.TcpServer.GetConnMgr().Remove(c)
+	// Remove the connection from the connection manager
+	c.TcpServer.GetConnMgr().Remove(c)
 
-    // Close all channels of this connection
-    close(c.ExitBuffChan)
-    close(c.msgBuffChan)
+	// Close all channels of this connection
+	close(c.ExitBuffChan)
+	close(c.msgBuffChan)
 }
 
-func NewConnection(server ziface.Iserver, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	c := &Connection{
 		TcpServer:    server, // Set the server object
 		Conn:         conn,
