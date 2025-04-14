@@ -5,6 +5,7 @@ import (
 	"gorik/utils"
 	"gorik/ziface"
 	"strconv"
+	"time"
 )
 
 type MsgHandle struct {
@@ -22,6 +23,7 @@ func NewMsgHandle() *MsgHandle {
 }
 
 func (mh *MsgHandle) DoMsgHandler(request ziface.IRequest) {
+	time.Sleep(time.Millisecond * 100)
 	handler, ok := mh.Apis[request.GetMsgID()]
 	if !ok {
 		fmt.Println("api msgId =", request.GetMsgID(), "is not FOUND!")
@@ -82,4 +84,5 @@ func (mh *MsgHandle) SendMsgToTaskQueue(request ziface.IRequest) {
 
 	// Send the request message to the task queue
 	mh.TaskQueue[workerID] <- request
+
 }

@@ -10,7 +10,8 @@ import (
 )
 
 type Connection struct {
-	Conn *net.TCPConn
+	TcpServer ziface.Iserver
+	Conn      *net.TCPConn
 	// Current connection's ID, also known as SessionID, ID is   globally unique
 	ConnID uint32
 	// Current connection's close status
@@ -21,6 +22,7 @@ type Connection struct {
 	// Channel to inform that the connection has exited/stopped
 	ExitBuffChan chan bool
 	msgChan      chan []byte
+	msgBuffChan  chan []byte
 }
 
 func (c *Connection) SendMsg(msgID uint32, data []byte) error {
@@ -63,43 +65,58 @@ func (c Connection) RemoteAddr() net.Addr {
 // Start implements ziface.IConnection.
 
 func (c *Connection) Start() {
-	// 1. Start a Goroutine for reading data from the client
-	go c.StartReader()
-	// 2. Start a Goroutine for writing data back to the client
-	go c.StartWriter()
-
-	for {
-		select {
-		case <-c.ExitBuffChan:
-			// Received exit message, no longer block
-			return
-		}
+	func (c *Connection) Start() {
+		// 1. Start the Goroutine for reading data from the client
+		go c.StartReader()
+		// 2. Start the Goroutine for writing data back to the client
+		go c.StartWriter()
+	
+		// Call the registered hook method for connection creation according to the user's requirements
+		c.TcpServer.CallOnConnStart(c)
 	}
 }
 
 // Stop implements ziface.IConnection.
-func (c Connection) Stop() {
-	if c.isClosed {
-		return
-	}
+func (c *Connection) Stop() {
+    fmt.Println("Conn Stop()...ConnID = ", c.ConnID)
+    // If the current connection is already closed
+    if c.isClosed == true {
+        return
+    }
+    c.isClosed = true
 
-	c.isClosed = true
+    // ==================
+    // If the user registered a callback function for this connection's closure, it should be called explicitly at this moment
+    c.TcpServer.CallOnConnStop(c)
+    // ==================
 
-	c.Conn.Close()
-	c.ExitBuffChan <- true
-	close(c.ExitBuffChan)
+    // Close the socket connection
+    c.Conn.Close()
+    // Close the writer
+    c.ExitBuffChan <- true
+
+    // Remove the connection from the connection manager
+    c.TcpServer.GetConnMgr().Remove(c)
+
+    // Close all channels of this connection
+    close(c.ExitBuffChan)
+    close(c.msgBuffChan)
 }
 
-func NewConntion(conn *net.TCPConn, connID uint32, callback_api ziface.HandFunc, handler ziface.IMsgHandle) *Connection {
+func NewConnection(server ziface.Iserver, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	c := &Connection{
+		TcpServer:    server, // Set the server object
 		Conn:         conn,
 		ConnID:       connID,
 		isClosed:     false,
-		MsgHandler:   handler,
+		MsgHandler:   msgHandler,
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
+		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
 	}
 
+	// Add the newly created connection to the connection manager
+	c.TcpServer.GetConnMgr().Add(c)
 	return c
 }
 func (c *Connection) StartReader() {
@@ -163,15 +180,44 @@ func (c *Connection) StartWriter() {
 	for {
 		select {
 		case data := <-c.msgChan:
-			println("gota from chan")
 			// Data to be written to the client
 			if _, err := c.Conn.Write(data); err != nil {
 				fmt.Println("Send Data error:", err, "Conn Writer exit")
 				return
 			}
+
+		case data, ok := <-c.msgBuffChan:
+			// Handling data for buffered channel
+			if ok {
+				// Data to be written to the client
+				if _, err := c.Conn.Write(data); err != nil {
+					fmt.Println("Send Buffered Data error:", err, "Conn Writer exit")
+					return
+				}
+			} else {
+				fmt.Println("msgBuffChan is Closed")
+				break
+			}
+
 		case <-c.ExitBuffChan:
 			return
 		}
-		// Connection has been closed
 	}
+}
+func (c *Connection) SendBuffMsg(msgID uint32, data []byte) error {
+	if c.isClosed {
+		return errors.New("Connection closed when sending buffered message")
+	}
+	// Pack the data and send it
+	dp := NewDataPack()
+	msg, err := dp.Pack(NewMsgPackage(msgID, data))
+	if err != nil {
+		fmt.Println("Pack error msg ID =", msgID)
+		return errors.New("Pack error message")
+	}
+
+	// Write to the client
+	c.msgBuffChan <- msg
+
+	return nil
 }
