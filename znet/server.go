@@ -9,17 +9,16 @@ import (
 )
 
 type Server struct {
-	Name      string
-	IPversion string
-	IP        string
-	Port      int
-	Router    ziface.IRouter
+	Name       string
+	IPversion  string
+	IP         string
+	Port       int
+	msgHandler ziface.IMsgHandle
 }
 
 // AddRouter implements ziface.Iserver.
-func (s *Server) AddRouter(router ziface.IRouter) {
-	s.Router = router
-
+func (s *Server) AddRouter(msgId uint32, router ziface.IRouter) {
+	s.msgHandler.AddRouter(msgId, router)
 	fmt.Println("Add Router success!")
 }
 
@@ -65,7 +64,7 @@ func (s *Server) Start() {
 
 		var id uint32
 		id = 0
-		dealConn := NewConntion(conn, id, CallbackToClient, s.Router)
+		dealConn := NewConntion(conn, id, CallbackToClient, s.msgHandler)
 		id++
 		go dealConn.Start()
 
@@ -83,11 +82,11 @@ func NewServer() ziface.Iserver {
 	utils.GlobalObject.Reload()
 
 	s := &Server{
-		Name:      utils.GlobalObject.Name, // Get from global parameters
-		IPversion: "tcp4",
-		IP:        utils.GlobalObject.Host,    // Get from global parameters
-		Port:      utils.GlobalObject.TcpPort, // Get from global parameters
-		Router:    nil,
+		Name:       utils.GlobalObject.Name, // Get from global parameters
+		IPversion:  "tcp4",
+		IP:         utils.GlobalObject.Host,    // Get from global parameters
+		Port:       utils.GlobalObject.TcpPort, // Get from global parameters
+		msgHandler: NewMsgHandle(),
 	}
 	return s
 }

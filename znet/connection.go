@@ -16,8 +16,7 @@ type Connection struct {
 	isClosed bool
 
 	// The handle function of this connection's api
-	Router ziface.IRouter
-
+	MsgHandler ziface.IMsgHandle
 	// Channel to inform that the connection has exited/stopped
 	ExitBuffChan chan bool
 }
@@ -85,12 +84,12 @@ func (c Connection) Stop() {
 	close(c.ExitBuffChan)
 }
 
-func NewConntion(conn *net.TCPConn, connID uint32, callback_api ziface.HandFunc, router ziface.IRouter) *Connection {
+func NewConntion(conn *net.TCPConn, connID uint32, callback_api ziface.HandFunc, handler ziface.IMsgHandle) *Connection {
 	c := &Connection{
 		Conn:         conn,
 		ConnID:       connID,
 		isClosed:     false,
-		Router:       router,
+		MsgHandler:   handler,
 		ExitBuffChan: make(chan bool, 1),
 	}
 
@@ -141,11 +140,6 @@ func (c *Connection) StartReader() {
 		}
 
 		// Find the corresponding Handle registered in Routers based on the bound Conn
-		go func(request ziface.IRequest) {
-			// Execute the registered router methods
-			c.Router.PreHandle(request)
-			c.Router.Handle(request)
-			c.Router.PostHandle(request)
-		}(&req)
+		go c.MsgHandler.DoMsgHandler(&req)
 	}
 }
