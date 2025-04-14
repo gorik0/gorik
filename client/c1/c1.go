@@ -65,6 +65,6 @@ func main() {
 			fmt.Println("==> Recv Msg: ID=", msg.Id, ", len=", msg.DataLen, ", data=", string(msg.Data))
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(1 * time.Millisecond)
 	}
 }
