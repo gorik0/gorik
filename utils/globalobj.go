@@ -28,7 +28,7 @@ var GlobalObject *GlobalObj
 func (g *GlobalObj) Reload() {
 	data, err := ioutil.ReadFile("conf/zinx.json")
 	if err != nil {
-		panic(err)
+		println("PANIC!!!!!! no cfg")
 	}
 	// Parse the JSON data into the struct
 	// fmt.Printf("json: %s\n", data)
