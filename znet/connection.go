@@ -7,6 +7,7 @@ import (
 	"gorik/ziface"
 	"io"
 	"net"
+	"sync"
 )
 
 type Connection struct {
@@ -23,6 +24,9 @@ type Connection struct {
 	ExitBuffChan chan bool
 	msgChan      chan []byte
 	msgBuffChan  chan []byte
+	property     map[string]interface{}
+	// Lock for protecting concurrent property modifications
+	propertyLock sync.RWMutex
 }
 
 func (c *Connection) SendMsg(msgID uint32, data []byte) error {
@@ -111,6 +115,7 @@ func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, msgH
 		ExitBuffChan: make(chan bool, 1),
 		msgChan:      make(chan []byte),
 		msgBuffChan:  make(chan []byte, utils.GlobalObject.MaxMsgChanLen),
+		property:     make(map[string]interface{}),
 	}
 
 	// Add the newly created connection to the connection manager
@@ -218,4 +223,31 @@ func (c *Connection) SendBuffMsg(msgID uint32, data []byte) error {
 	c.msgBuffChan <- msg
 
 	return nil
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	c.property[key] = value
+}
+
+// Get connection property
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	} else {
+		return nil, errors.New("no property found")
+	}
+}
+
+// Remove connection property
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	delete(c.property, key)
 }
