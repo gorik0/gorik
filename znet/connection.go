@@ -19,27 +19,25 @@ type Connection struct {
 	MsgHandler ziface.IMsgHandle
 	// Channel to inform that the connection has exited/stopped
 	ExitBuffChan chan bool
+	msgChan      chan []byte
 }
 
-func (c *Connection) SendMsg(msgId uint32, data []byte) error {
+func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 	if c.isClosed == true {
-		return errors.New("Connection closed when send msg")
+		return errors.New("Connection closed when sending message")
 	}
 
 	// Package the data and send it
 	dp := NewDataPack()
-	msg, err := dp.Pack(NewMsgPackage(msgId, data))
+	msg, err := dp.Pack(NewMsgPackage(msgID, data))
 	if err != nil {
-		fmt.Println("Pack error msg id =", msgId)
-		return errors.New("Pack error msg")
+		fmt.Println("Pack error, msgID =", msgID)
+		return errors.New("Pack error message")
 	}
 
 	// Write back to the client
-	if _, err := c.Conn.Write(msg); err != nil {
-		fmt.Println("Write msg id", msgId, "error")
-		c.ExitBuffChan <- true
-		return errors.New("conn Write error")
-	}
+	// Change the previous direct write using conn.Write to sending the message to the Channel for the Writer to read
+	c.msgChan <- msg
 
 	return nil
 }
@@ -60,12 +58,17 @@ func (c Connection) RemoteAddr() net.Addr {
 }
 
 // Start implements ziface.IConnection.
-func (c Connection) Start() {
+
+func (c *Connection) Start() {
+	// 1. Start a Goroutine for reading data from the client
 	go c.StartReader()
+	// 2. Start a Goroutine for writing data back to the client
+	go c.StartWriter()
 
 	for {
 		select {
 		case <-c.ExitBuffChan:
+			// Received exit message, no longer block
 			return
 		}
 	}
@@ -91,6 +94,7 @@ func NewConntion(conn *net.TCPConn, connID uint32, callback_api ziface.HandFunc,
 		isClosed:     false,
 		MsgHandler:   handler,
 		ExitBuffChan: make(chan bool, 1),
+		msgChan:      make(chan []byte),
 	}
 
 	return c
@@ -141,5 +145,24 @@ func (c *Connection) StartReader() {
 
 		// Find the corresponding Handle registered in Routers based on the bound Conn
 		go c.MsgHandler.DoMsgHandler(&req)
+	}
+}
+
+func (c *Connection) StartWriter() {
+	fmt.Println("[Writer Goroutine is running]")
+	defer fmt.Println(c.RemoteAddr().String(), "[conn Writer exit!]")
+
+	for {
+		select {
+		case data := <-c.msgChan:
+			// Data to be written to the client
+			if _, err := c.Conn.Write(data); err != nil {
+				fmt.Println("Send Data error:", err, "Conn Writer exit")
+				return
+			}
+		case <-c.ExitBuffChan:
+		}
+		// Connection has been closed
+		return
 	}
 }
